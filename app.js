@@ -1,3 +1,6 @@
+console.log("APP RODOU");
+
+// IMPORTS
 import "./config.js";
 import "./services/auth.js";
 import "./store/state.js";
@@ -21,6 +24,8 @@ import "./components/logo.js";
 
 import "./pages/render.js";
 import "./pages/auth-ui.js";
+
+// 🔥 FUNÇÃO GLOBAL
 function goPage(page) {
   const pages = document.querySelectorAll(".page");
   pages.forEach(p => p.classList.remove("active"));
@@ -29,4 +34,5 @@ function goPage(page) {
   if (target) target.classList.add("active");
 }
 
+// 🔥 EXPOR GLOBAL
 window.goPage = goPage;
