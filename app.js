@@ -2,11 +2,9 @@ console.log("APP RODOU");
 
 // IMPORTS
 import "./config.js";
-import "./services/auth.js";
 import "./store/state.js";
 import "./utils/format.js";
 import "./utils/animations.js";
-import "./services/sync.js";
 
 import "./components/theme.js";
 import "./components/avatar.js";
@@ -36,3 +34,6 @@ function goPage(page) {
 
 // 🔥 EXPOR GLOBAL
 window.goPage = goPage;
+
+// 🔥 IMPORTANTE: carregar depois
+import("./services/auth.js");
