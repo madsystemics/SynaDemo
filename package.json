@@ -1,0 +1,19 @@
+{
+  "name": "syna-financas",
+  "version": "1.0.0",
+  "description": "Syna — Controle financeiro inteligente para casais",
+  "private": true,
+  "scripts": {
+    "dev":     "npx http-server frontend -p 3000 -o -c-1",
+    "deploy":  "netlify deploy --dir=frontend --prod",
+    "build":   "echo 'Static app — no build step needed. Deploy /frontend directly.'",
+    "lint":    "npx eslint frontend/**/*.js --fix"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "netlify-cli": "^17.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
