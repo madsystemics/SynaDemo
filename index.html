@@ -2,25 +2,27 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Syna — Finanças do Casal</title>
-  <meta name="description" content="Controle financeiro inteligente para casais.">
-  <meta name="theme-color" content="#0c0c0f">
-
-  <link rel="apple-touch-icon" href="./logo.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Instrument+Serif:ital@0;1&family=Sora:wght@300;400;500;600&family=Inter:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&family=Nunito:wght@300;400;500;600&family=Fira+Code:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Syna</title>
 
   <link rel="stylesheet" href="./styles.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
-<!-- Seu conteúdo HTML aqui -->
+<div class="page active" data-page="dashboard">
+  <h1>Dashboard</h1>
+</div>
 
-<!-- ✅ ÚNICO SCRIPT -->
+<div class="page" data-page="transactions">
+  <h1>Transações</h1>
+</div>
+
+<button onclick="goPage('dashboard')">Dashboard</button>
+<button onclick="goPage('transactions')">Transações</button>
+
+<!-- 🔥 ÚNICO SCRIPT -->
 <script type="module" src="./app.js"></script>
 
 </body>
