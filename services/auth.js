@@ -1,8 +1,4 @@
-/**
- * services/auth.js — localStorage-based auth engine
- * Swap Auth methods for Firebase/Supabase when ready.
- * No dependencies.
- */
+import { goPage } from "../app.js";
 'use strict';
 
 const Auth = (() => {
