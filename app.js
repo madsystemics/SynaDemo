@@ -21,3 +21,12 @@ import "./components/logo.js";
 
 import "./pages/render.js";
 import "./pages/auth-ui.js";
+function goPage(page) {
+  const pages = document.querySelectorAll(".page");
+  pages.forEach(p => p.classList.remove("active"));
+
+  const target = document.querySelector(`[data-page="${page}"]`);
+  if (target) target.classList.add("active");
+}
+
+window.goPage = goPage;
