@@ -23,8 +23,8 @@ import "./components/logo.js";
 import "./pages/render.js";
 import "./pages/auth-ui.js";
 
-// 🔥 FUNÇÃO GLOBAL
-function goPage(page) {
+// 🔥 EXPORTA A FUNÇÃO (IMPORTANTE)
+export function goPage(page) {
   const pages = document.querySelectorAll(".page");
   pages.forEach(p => p.classList.remove("active"));
 
@@ -32,8 +32,5 @@ function goPage(page) {
   if (target) target.classList.add("active");
 }
 
-// 🔥 EXPOR GLOBAL
-window.goPage = goPage;
-
-// 🔥 IMPORTANTE: carregar depois
-import("./services/auth.js");
+// 🔥 IMPORTA AUTH POR ÚLTIMO
+import "./services/auth.js";
