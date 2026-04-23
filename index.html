@@ -4965,10 +4965,13 @@ function initOnboarding() {
   const grid = document.getElementById('ob-emoji-grid');
   if (!grid) return;
   grid.innerHTML = OB_EMOJIS.map(function(e) {
-    return '<div class="onboarding-emoji-opt' + (e === obSelectedEmoji ? ' selected' : '') + '" onclick="obSelectEmoji('' + e + '')">' + e + '</div>';
+    const sel = e === obSelectedEmoji ? ' selected' : '';
+    return '<div class="onboarding-emoji-opt' + sel + '" data-emoji="' + e + '">' + e + '</div>';
   }).join('');
+  grid.querySelectorAll('.onboarding-emoji-opt').forEach(function(el) {
+    el.addEventListener('click', function() { obSelectEmoji(el.getAttribute('data-emoji')); });
+  });
 }
-
 function obSelectEmoji(e) {
   obSelectedEmoji = e;
   document.querySelectorAll('.onboarding-emoji-opt').forEach(function(el) {
@@ -5319,6 +5322,7 @@ const _origRenderDash = typeof renderDashCards !== 'undefined' ? renderDashCards
     return;
   }
   document.getElementById('auth-root').classList.add('visible');
+    initSynaLogoAuth();
 
 })();
 
@@ -5491,6 +5495,7 @@ async function authLogout() {
 
   document.getElementById('app-root').style.display = 'none';
   document.getElementById('auth-root').classList.add('visible');
+    initSynaLogoAuth();
   authShowMode('login');
 
   Object.assign(state, {
@@ -6330,6 +6335,27 @@ function synaLogoClickAuth() {
   anims[Math.floor(Math.random()*anims.length)]();
 }
 
+
+function initSynaLogoAuth() {
+  const logo = document.getElementById('syna-logo-auth');
+  if (!logo) return;
+  logo.addEventListener('mousemove', function(e) {
+    const rect = logo.getBoundingClientRect();
+    const x = (e.clientX - rect.left  - rect.width  / 2) / (rect.width  / 2);
+    const y = (e.clientY - rect.top   - rect.height / 2) / (rect.height / 2);
+    logo.style.transform = 'perspective(400px) rotateY(' + (x * 18) + 'deg) rotateX(' + (-y * 18) + 'deg) scale(1.08)';
+  });
+  logo.addEventListener('mouseleave', function() {
+    logo.style.transition = 'transform 0.5s var(--spring-soft)';
+    logo.style.transform = '';
+    setTimeout(function() { logo.style.transition = ''; }, 500);
+  });
+  logo.addEventListener('click', function() {
+    logo.style.transform = 'scale(0.88)';
+    setTimeout(function() { logo.style.transform = 'scale(1.12)'; }, 100);
+    setTimeout(function() { logo.style.transform = ''; }, 350);
+  });
+}
 function spawnAuthParticles(wrap) {
   if (!wrap) return;
   const emojis = ['✨','💫','⭐','🌟','💥'];
