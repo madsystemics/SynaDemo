@@ -5021,13 +5021,15 @@ async function obConfirm() {
 
 async function checkOnboarding(user) {
   if (!user) return false;
-  if (localStorage.getItem('syna_onboarded_' + user.id)) return false;
+  const uid = user.id || user.uid; // suporta ambos os formatos
+  if (!uid) return false;
+  if (localStorage.getItem('syna_onboarded_' + uid)) return false;
   try {
-    const local = localStorage.getItem('syna_' + user.id);
+    const local = localStorage.getItem('syna_' + uid);
     if (local) {
       const parsed = JSON.parse(local);
       if (parsed.names && parsed.names[0] && parsed.names[0] !== 'Pessoa 1') {
-        localStorage.setItem('syna_onboarded_' + user.id, '1');
+        localStorage.setItem('syna_onboarded_' + uid, '1');
         return false;
       }
     }
@@ -5347,7 +5349,7 @@ const _origRenderDash = typeof renderDashCards !== 'undefined' ? renderDashCards
   const { data: { session } } = await supa.auth.getSession();
   if (session?.user) {
     const u = session.user;
-    Auth.onLogin({ uid: u.id, email: u.email, name: u.user_metadata?.name || u.email });
+    Auth.onLogin({ id: u.id, uid: u.id, email: u.email, name: u.user_metadata?.name || u.email });
     return;
   }
   document.getElementById('auth-root').classList.add('visible');
