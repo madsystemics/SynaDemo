@@ -2931,7 +2931,7 @@ canvas {
             <div class="emoji-picker" id="emoji-picker-1"></div>
           </div>
         </div>
-        <div class="settings-row">
+        <div class="settings-row" id="partner-cfg-row" style="display:none">
           <div>
             <div class="settings-label" style="color:var(--p2)">● <span id="cfg-n2-label">—</span></div>
             <div class="settings-desc">Nome e ícone</div>
@@ -3008,7 +3008,7 @@ canvas {
           </div>
         </div>
         <!-- Person 2 avatar -->
-        <div class="settings-row" style="align-items:flex-start;gap:16px">
+        <div class="settings-row" id="partner-avatar-row" style="display:none;align-items:flex-start;gap:16px">
           <div style="display:flex;align-items:center;gap:12px;flex:1">
             <div id="av2-preview" style="width:54px;height:54px;border-radius:50%;background:var(--surface2);border:2px solid var(--border2);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;transition:border-color .2s">💙</div>
             <div>
@@ -3567,6 +3567,8 @@ async function init() {
 
   // 3. Aguardar dados compartilhados do Supabase
   await loadState();
+  applyPartnerVisibility();
+  applyPartnerVisibility();
 
   // 4. Re-renderizar com dados remotos completos (tema já correto do localStorage)
   applyTheme(state.theme);
@@ -6995,6 +6997,7 @@ async function unlinkHousehold() {
 
   // Salvar flag E o householdId atual para ignorar no próximo reload
   const oldHhId = householdId;
+  hasPartner = false;
   hasPartner = false;
   localStorage.setItem('syna_unlinked_' + uid, '1');
   if (oldHhId) localStorage.setItem('syna_unlinked_hh_' + uid, oldHhId);
