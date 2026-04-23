@@ -3637,7 +3637,11 @@ function saveState() {
       { household_id: householdId, data: sharedData, updated_at: new Date().toISOString() },
       { onConflict: 'household_id' }
     ).then(({ error }) => {
-      if (error) console.error('saveState error:', error);
+      if (error) { console.error('saveState error:', error); return; }
+      // Broadcast para parceiro atualizar sem F5
+      if (realtimeSub) {
+        realtimeSub.send({ type: 'broadcast', event: 'sync', payload: { at: Date.now() } });
+      }
     });
   });
 }
@@ -5183,44 +5187,65 @@ async function joinHousehold(code) {
 function setupRealtime() {
   if (!householdId) return;
   if (realtimeSub) { supa.removeChannel(realtimeSub); realtimeSub = null; }
-  realtimeSub = supa.channel('hh-' + householdId)
-    .on('postgres_changes', { event:'*', schema:'public', table:'household_data',
-      filter:'household_id=eq.' + householdId },
-      function(payload) {
-        const remote = payload.new && payload.new.data;
-        if (!remote) return;
-        const SHARED = ['transactions','metas','budgets','cats','challenge','lastReportMonth'];
-        let changed = false;
-        SHARED.forEach(function(k) {
-          if (remote[k] !== undefined && JSON.stringify(remote[k]) !== JSON.stringify(state[k])) {
-            state[k] = remote[k]; changed = true;
-          }
-        });
-        // Atualizar nome/emoji do parceiro em tempo real
-        if (remote._members) {
-          supa.auth.getUser().then(function(r) {
-            const me = r.data.user;
-            if (!me) return;
-            const partnerEntry = Object.entries(remote._members).find(function(e) { return e[0] !== me.id; });
-            if (partnerEntry) {
-              state.names[1]  = partnerEntry[1].name  || state.names[1];
-              state.emojis[1] = partnerEntry[1].emoji || state.emojis[1];
-              changed = true;
-            }
-          });
-        }
-        if (changed) {
-          renderAll();
-          showToast('🔄 ' + (state.names[1] || 'Parceiro') + ' atualizou', 'success', 2500);
-        }
-      })
-    .subscribe(function(status) {
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        setTimeout(setupRealtime, 3000);
-      }
-    });
+
+  realtimeSub = supa.channel('hh-' + householdId, {
+    config: { broadcast: { self: false } }
+  })
+  // Broadcast: mais confiável — não depende de replication
+  .on('broadcast', { event: 'sync' }, function(payload) {
+    // Parceiro salvou algo — recarregar dados compartilhados
+    _reloadSharedData();
+  })
+  // postgres_changes como fallback (se replication estiver habilitada)
+  .on('postgres_changes', { event:'*', schema:'public', table:'household_data',
+    filter:'household_id=eq.' + householdId },
+    function(payload) {
+      const remote = payload.new && payload.new.data;
+      if (!remote) return;
+      _applySharedData(remote);
+    })
+  .subscribe(function(status) {
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      console.warn('Realtime desconectado, reconectando...', status);
+      setTimeout(setupRealtime, 3000);
+    }
+  });
 }
 
+function _applySharedData(remote) {
+  if (!remote) return;
+  const SHARED = ['transactions','metas','budgets','cats','challenge','lastReportMonth'];
+  let changed = false;
+  SHARED.forEach(function(k) {
+    if (remote[k] !== undefined && JSON.stringify(remote[k]) !== JSON.stringify(state[k])) {
+      state[k] = remote[k]; changed = true;
+    }
+  });
+  if (remote._members) {
+    supa.auth.getUser().then(function(r) {
+      const me = r.data && r.data.user;
+      if (!me) return;
+      const entries = Object.entries(remote._members);
+      const partnerEntry = entries.find(function(e) { return e[0] !== me.id; });
+      if (partnerEntry) {
+        state.names[1]  = partnerEntry[1].name  || state.names[1];
+        state.emojis[1] = partnerEntry[1].emoji || state.emojis[1];
+        changed = true;
+      }
+    });
+  }
+  if (changed) {
+    renderAll();
+    showToast('🔄 ' + (state.names[1] || 'Parceiro') + ' atualizou', 'success', 2500);
+  }
+}
+
+async function _reloadSharedData() {
+  if (!householdId) return;
+  const { data } = await supa.from('household_data').select('data')
+    .eq('household_id', householdId).maybeSingle();
+  if (data && data.data) _applySharedData(data.data);
+}
 function createRipple(e) {
   const el = e.currentTarget;
   const rect = el.getBoundingClientRect();
