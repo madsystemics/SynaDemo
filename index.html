@@ -3604,6 +3604,15 @@ async function loadState() {
   const { data } = await supa.from('household_data').select('data').eq('household_id', householdId).maybeSingle();
   if (data?.data && Object.keys(data.data).length > 0) {
     SHARED_KEYS.forEach(k => { if (data.data[k] !== undefined) state[k] = data.data[k]; });
+    // Ler nome e emoji do parceiro (_members)
+    const members = data.data._members;
+    if (members) {
+      const partnerEntry = Object.entries(members).find(([uid]) => uid !== user.id);
+      if (partnerEntry) {
+        state.names[1]  = partnerEntry[1].name  || state.names[1];
+        state.emojis[1] = partnerEntry[1].emoji || state.emojis[1];
+      }
+    }
     try { localStorage.setItem('syna_' + user.id, JSON.stringify(state)); } catch {}
   }
   setupRealtime();
@@ -3621,6 +3630,9 @@ function saveState() {
     const SHARED_KEYS = ['transactions','metas','budgets','cats','challenge','lastReportMonth'];
     const sharedData = {};
     SHARED_KEYS.forEach(k => { sharedData[k] = state[k]; });
+    // Salvar nome e emoji do usuário atual para o parceiro ler
+    if (!sharedData._members) sharedData._members = {};
+    sharedData._members[user.id] = { name: state.names[0], emoji: state.emojis[0] };
     supa.from('household_data').upsert(
       { household_id: householdId, data: sharedData, updated_at: new Date().toISOString() },
       { onConflict: 'household_id' }
@@ -4995,11 +5007,15 @@ async function obConfirm() {
   state.emojis[0] = obSelectedEmoji;
   const resp = await supa.auth.getUser();
   const user = resp.data.user;
-  if (user) localStorage.setItem('syna_onboarded_' + user.id, '1');
+  if (user) {
+    // Salvar flag E state no localStorage AGORA, de forma síncrona
+    localStorage.setItem('syna_onboarded_' + user.id, '1');
+    try { localStorage.setItem('syna_' + user.id, JSON.stringify(state)); } catch(e) {}
+  }
   document.getElementById('onboarding-root').style.display = 'none';
   document.getElementById('app-root').style.display = 'block';
   syncNames();
-  saveState();
+  saveState(); // também salva no Supabase em background
   init();
 }
 
@@ -5178,6 +5194,19 @@ function setupRealtime() {
             state[k] = remote[k]; changed = true;
           }
         });
+        // Atualizar nome/emoji do parceiro em tempo real
+        if (remote._members) {
+          supa.auth.getUser().then(function(r) {
+            const me = r.data.user;
+            if (!me) return;
+            const partnerEntry = Object.entries(remote._members).find(function(e) { return e[0] !== me.id; });
+            if (partnerEntry) {
+              state.names[1]  = partnerEntry[1].name  || state.names[1];
+              state.emojis[1] = partnerEntry[1].emoji || state.emojis[1];
+              changed = true;
+            }
+          });
+        }
         if (changed) {
           renderAll();
           showToast('🔄 ' + (state.names[1] || 'Parceiro') + ' atualizou', 'success', 2500);
