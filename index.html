@@ -1976,7 +1976,7 @@ input[type=range]::-moz-range-thumb { width:18px; height:18px; border-radius:50%
 }
 
 .syna-logo-auth:hover .syna-logo-glow { opacity: 0.55 !important; }
-.syna-logo-auth:hover #syna-logo-auth-img { transform: translateY(-3px) scale(1.1) rotate(-3deg) !important; filter: drop-shadow(0 6px 16px rgba(179,64,240,.5)) drop-shadow(0 2px 6px rgba(0,212,255,.4)) !important; }
+/* hover CSS removido — efeito controlado por JS (jelly 3D) */
 .syna-logo-auth { user-select:none; -webkit-tap-highlight-color:transparent; }
 
 #fab-add-tx    { display:none; }
@@ -6370,42 +6370,42 @@ function synaLogoClickAuth() {
 function initSynaLogoAuth() {
   const logo = document.getElementById('syna-logo-auth');
   if (!logo) return;
+  const img = document.getElementById('syna-logo-auth-img') || logo.querySelector('img');
+  if (!img) return;
+
   logo.addEventListener('mousemove', function(e) {
     const rect = logo.getBoundingClientRect();
-    const x = (e.clientX - rect.left  - rect.width  / 2) / (rect.width  / 2);
-    const y = (e.clientY - rect.top   - rect.height / 2) / (rect.height / 2);
-    logo.style.transform = 'perspective(400px) rotateY(' + (x * 18) + 'deg) rotateX(' + (-y * 18) + 'deg) scale(1.08)';
+    const x = (e.clientX - rect.left - rect.width  / 2) / (rect.width  / 2);
+    const y = (e.clientY - rect.top  - rect.height / 2) / (rect.height / 2);
+    img.style.animationPlayState = 'paused';
+    img.style.transition = 'transform .12s cubic-bezier(.34,1.56,.64,1)';
+    img.style.transform = [
+      'perspective(180px)',
+      'rotateY(' + (x * 22) + 'deg)',
+      'rotateX(' + (-y * 22) + 'deg)',
+      'scale(1.13)',
+      'translateY(' + (-y * 6) + 'px)',
+      'translateX(' + (x * 4) + 'px)'
+    ].join(' ');
   });
-  logo.addEventListener('mouseleave', function() {
-    logo.style.transition = 'transform 0.5s var(--spring-soft)';
-    logo.style.transform = '';
-    setTimeout(function() { logo.style.transition = ''; }, 500);
-  });
-  logo.addEventListener('click', function() {
-    logo.style.transform = 'scale(0.88)';
-    setTimeout(function() { logo.style.transform = 'scale(1.12)'; }, 100);
-    setTimeout(function() { logo.style.transform = ''; }, 350);
-  });
-}
-function spawnAuthParticles(wrap) {
-  if (!wrap) return;
-  const emojis = ['✨','💫','⭐','🌟','💥'];
-  for (let i = 0; i < 6; i++) {
-    const p = document.createElement('div');
-    const angle = (i / 6) * Math.PI * 2;
-    const dist = 50 + Math.random() * 30;
-    p.textContent = emojis[Math.floor(Math.random()*emojis.length)];
-    p.style.cssText = `position:absolute;top:50%;left:50%;font-size:${12+Math.random()*10}px;pointer-events:none;z-index:10;transition:all .6s ease-out;transform:translate(-50%,-50%);opacity:1;`;
-    wrap.appendChild(p);
-    requestAnimationFrame(() => {
-      p.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px)) scale(0)`;
-      p.style.opacity = '0';
-    });
-    setTimeout(() => p.remove(), 700);
-  }
-}
 
-</script>
+  logo.addEventListener('mouseleave', function() {
+    img.style.transition = 'transform .5s cubic-bezier(.34,1.56,.64,1)';
+    img.style.transform = '';
+    // Wobble de volta — efeito pudim
+    setTimeout(function() {
+      jellyWobble(img, 0.5);
+      img.style.transition = '';
+      setTimeout(function() {
+        img.style.animationPlayState = '';
+      }, 600);
+    }, 120);
+  });
+
+  logo.addEventListener('click', function() {
+    jellyWobble(img, 1.0);
+  });
+}</script>
 </div><!-- /app-root -->
 
 <!-- MOB FAB -->
