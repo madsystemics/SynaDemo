@@ -3604,13 +3604,28 @@ async function loadState() {
   const { data } = await supa.from('household_data').select('data').eq('household_id', householdId).maybeSingle();
   if (data?.data && Object.keys(data.data).length > 0) {
     SHARED_KEYS.forEach(k => { if (data.data[k] !== undefined) state[k] = data.data[k]; });
-    // Ler nome e emoji do parceiro (_members)
+    // Ler nome e emoji do parceiro (_members) e definir ordem p1/p2
     const members = data.data._members;
+    const p1uid   = data.data._p1uid;
     if (members) {
-      const partnerEntry = Object.entries(members).find(([uid]) => uid !== user.id);
-      if (partnerEntry) {
-        state.names[1]  = partnerEntry[1].name  || state.names[1];
-        state.emojis[1] = partnerEntry[1].emoji || state.emojis[1];
+      const myEntry      = members[user.id];
+      const partnerEntry = Object.entries(members).find(function(e) { return e[0] !== user.id; });
+      if (p1uid && p1uid !== user.id) {
+        // Eu sou p2 — parceiro é p1
+        if (partnerEntry) {
+          state.names[0]  = partnerEntry[1].name  || state.names[0];
+          state.emojis[0] = partnerEntry[1].emoji || state.emojis[0];
+        }
+        if (myEntry) {
+          state.names[1]  = myEntry.name  || state.names[1];
+          state.emojis[1] = myEntry.emoji || state.emojis[1];
+        }
+      } else {
+        // Eu sou p1 — parceiro é p2
+        if (partnerEntry) {
+          state.names[1]  = partnerEntry[1].name  || state.names[1];
+          state.emojis[1] = partnerEntry[1].emoji || state.emojis[1];
+        }
       }
     }
     try { localStorage.setItem('syna_' + user.id, JSON.stringify(state)); } catch {}
@@ -3633,6 +3648,10 @@ function saveState() {
     // Salvar nome e emoji do usuário atual para o parceiro ler
     if (!sharedData._members) sharedData._members = {};
     sharedData._members[user.id] = { name: state.names[0], emoji: state.emojis[0] };
+    // _p1uid define quem é Pessoa 1 permanentemente (primeiro a salvar)
+    if (!sharedData._p1uid) sharedData._p1uid = user.id;
+    // Registrar quem é p1 (primeiro a salvar) — define a ordem permanente
+    if (!sharedData._p1uid) sharedData._p1uid = user.id;
     supa.from('household_data').upsert(
       { household_id: householdId, data: sharedData, updated_at: new Date().toISOString() },
       { onConflict: 'household_id' }
@@ -4971,6 +4990,7 @@ function renderAll() {
 // ═══════════════════════════════════════════════
 const supa = supabase.createClient('https://hjndfuscdpdulmdsalys.supabase.co', 'sb_publishable_N8kIlSdZecoFaU8-IpsgSw_n9aAEFec');
 let householdId  = null;
+let hasPartner   = false;
 let realtimeSub  = null;
 
 // ── Onboarding ──
@@ -5131,8 +5151,11 @@ async function getOrCreateHousehold() {
     if (localStorage.getItem('syna_unlinked_' + uid) === '1' && foundHhId === unlinkedHhId) {
       return null;
     }
-    // Household válido
+    // Household válido — verificar se tem parceiro real (2+ membros)
     householdId = foundHhId;
+    const { data: allMembers } = await supa
+      .from('household_members').select('user_id').eq('household_id', foundHhId);
+    hasPartner = allMembers && allMembers.length >= 2;
     return householdId;
   }
 
@@ -5174,6 +5197,7 @@ async function joinHousehold(code) {
   await supa.from('household_members')
     .upsert({ household_id: hh.id, user_id: uid }, { onConflict: 'household_id,user_id', ignoreDuplicates: true });
   householdId = hh.id;
+  hasPartner = true;
   // Limpar flag de desvinculado — usuário entrou em novo casal
   localStorage.removeItem('syna_unlinked_' + uid);
   localStorage.removeItem('syna_unlinked_hh_' + uid);
@@ -5225,13 +5249,19 @@ function _applySharedData(remote) {
     supa.auth.getUser().then(function(r) {
       const me = r.data && r.data.user;
       if (!me) return;
+      const p1uid = remote._p1uid;
+      const myEntry = remote._members[me.id];
       const entries = Object.entries(remote._members);
       const partnerEntry = entries.find(function(e) { return e[0] !== me.id; });
-      if (partnerEntry) {
-        state.names[1]  = partnerEntry[1].name  || state.names[1];
-        state.emojis[1] = partnerEntry[1].emoji || state.emojis[1];
-        changed = true;
+      if (p1uid && p1uid !== me.id) {
+        // Eu sou p2
+        if (partnerEntry) { state.names[0] = partnerEntry[1].name || state.names[0]; state.emojis[0] = partnerEntry[1].emoji || state.emojis[0]; }
+        if (myEntry)       { state.names[1] = myEntry.name || state.names[1]; state.emojis[1] = myEntry.emoji || state.emojis[1]; }
+      } else {
+        // Eu sou p1
+        if (partnerEntry) { state.names[1] = partnerEntry[1].name || state.names[1]; state.emojis[1] = partnerEntry[1].emoji || state.emojis[1]; }
       }
+      changed = true;
     });
   }
   if (changed) {
@@ -6918,7 +6948,7 @@ function updateCoupleStatus() {
   const linkedInvite = document.getElementById('couple-status-linked-invite');
   const topBadge = document.getElementById('couple-badge');
 
-  if (householdId) {
+  if (householdId && hasPartner) {
     if (linked) linked.style.display = 'flex';
     if (unlinked) unlinked.style.display = 'none';
     if (linkedInvite) linkedInvite.style.display = 'block';
@@ -6955,6 +6985,7 @@ async function unlinkHousehold() {
 
   // Salvar flag E o householdId atual para ignorar no próximo reload
   const oldHhId = householdId;
+  hasPartner = false;
   localStorage.setItem('syna_unlinked_' + uid, '1');
   if (oldHhId) localStorage.setItem('syna_unlinked_hh_' + uid, oldHhId);
 
@@ -6988,7 +7019,7 @@ function showSkeletons() {
 }
 
 // ── Modo Solo vs Casal ──
-function isSolo() { return !householdId; }
+function isSolo() { return !householdId || !hasPartner; }
 
 function applySoloMode() {
   const solo = isSolo();
