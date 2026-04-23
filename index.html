@@ -2408,66 +2408,6 @@ canvas {
   .bn-item  { padding: 6px 2px !important; gap: 2px !important; }
 }
 
-/* ── Onboarding ── */
-#onboarding-root {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: var(--bg, #0c0c0f);
-}
-.onboarding-card {
-  background: var(--surface, #1a1a20);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 36px 28px;
-  max-width: 380px;
-  width: 100%;
-  text-align: center;
-  animation: jellyIn 0.5s var(--spring-soft) both;
-}
-.onboarding-emoji-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-  margin: 16px 0;
-}
-.onboarding-emoji-opt {
-  font-size: 24px;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  border: 2px solid transparent;
-  background: var(--surface2);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: border-color .15s, transform .15s;
-}
-.onboarding-emoji-opt:hover { transform: scale(1.1); }
-.onboarding-emoji-opt.selected {
-  border-color: var(--accent, #b340f0);
-  background: rgba(179,64,240,.15);
-}
-
-/* ── Badge vinculados ── */
-@keyframes badgePulse {
-  0%,100% { box-shadow: 0 0 0 0 rgba(179,64,240,0); }
-  50%      { box-shadow: 0 0 0 4px rgba(179,64,240,.15); }
-}
-@keyframes heartbeat {
-  0%,100% { transform: scale(1); }
-  14%     { transform: scale(1.3); }
-  28%     { transform: scale(1); }
-  42%     { transform: scale(1.2); }
-  56%     { transform: scale(1); }
-}
-
 /* ── Skeleton Loading ── */
 @keyframes shimmer {
   0%   { background-position: -600px 0; }
@@ -2482,6 +2422,44 @@ canvas {
 }
 .skeleton-card { height: 88px; border-radius: var(--radius-sm); }
 .skeleton-line { height: 13px; border-radius: 6px; margin-bottom: 8px; }
+
+/* ── Badge vinculados ── */
+@keyframes badgePulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(179,64,240,0); }
+  50%      { box-shadow: 0 0 0 5px rgba(179,64,240,.12); }
+}
+@keyframes heartbeat {
+  0%,100% { transform: scale(1); }
+  14%     { transform: scale(1.35); }
+  28%     { transform: scale(1); }
+  42%     { transform: scale(1.2); }
+  56%     { transform: scale(1); }
+}
+
+/* ── Onboarding ── */
+#onboarding-root {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: var(--bg, #0c0c0f);
+}
+.onboarding-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 24px; padding: 36px 28px;
+  max-width: 380px; width: 100%; text-align: center;
+  animation: jellyIn 0.5s var(--spring-soft) both;
+}
+.onboarding-emoji-grid {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 14px 0;
+}
+.onboarding-emoji-opt {
+  font-size: 22px; width: 42px; height: 42px; border-radius: 10px;
+  border: 2px solid transparent; background: var(--surface2);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, transform .15s;
+}
+.onboarding-emoji-opt:hover { transform: scale(1.1); }
+.onboarding-emoji-opt.selected { border-color: var(--accent,#b340f0); background: rgba(179,64,240,.15); }
+
 </style>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2679,9 +2657,9 @@ canvas {
       </div>
       <!-- Badge de vínculo -->
       <div id="couple-badge" style="display:none;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(179,64,240,.15),rgba(99,102,241,.15));border:1px solid rgba(179,64,240,.35);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--accent);font-weight:600;cursor:default;animation:badgePulse 2.4s ease-in-out infinite" title="Vocês estão vinculados!">
-        <span id="badge-emoji1" style="font-size:15px;transition:transform .2s">😊</span>
-        <span style="font-size:10px;opacity:.7;animation:heartbeat 1.2s ease-in-out infinite">💞</span>
-        <span id="badge-emoji2" style="font-size:15px;transition:transform .2s">😊</span>
+        <span id="badge-emoji1" style="font-size:15px">😊</span>
+        <span style="font-size:10px;opacity:.8;animation:heartbeat 1.2s ease-in-out infinite">💞</span>
+        <span id="badge-emoji2" style="font-size:15px">😊</span>
       </div>
       <!-- User menu -->
       <div class="user-menu-wrap">
@@ -3585,7 +3563,7 @@ async function init() {
   syncNames();
   checkAutoReport();
   renderAll(); // render rápido com cache local
-  showSkeletons(); // mostrar skeletons enquanto aguarda Supabase
+  if (currentPage === 'dashboard') showSkeletons();
 
   // 3. Aguardar dados compartilhados do Supabase
   await loadState();
@@ -3660,25 +3638,20 @@ function bnSetActive(id) {
 
 function goPage(id) {
   if (currentPage === id) return;
-
   const cur = document.querySelector('.page.active');
   const next = document.getElementById('page-' + id);
-
-  // Mostrar próxima imediatamente — crossfade sem flash
   if (next) next.classList.add('active');
-
   if (cur && cur !== next) {
     cur.classList.add('page-exit');
     cur.classList.remove('active');
-    setTimeout(() => cur.classList.remove('page-exit'), 200);
+    setTimeout(function() { cur.classList.remove('page-exit'); }, 200);
   }
-
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const navEl = document.querySelector(`[data-page="${id}"]`);
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  const navEl = document.querySelector('[data-page="' + id + '"]');
   if (navEl) {
     navEl.classList.add('active');
     const icon = navEl.querySelector('.ni, .nav-item');
-    if (icon) { icon.style.animation='none'; requestAnimationFrame(()=>{ icon.style.animation=''; }); }
+    if (icon) { icon.style.animation='none'; requestAnimationFrame(function(){ icon.style.animation=''; }); }
   }
 
   const titleEl = document.getElementById('page-title');
@@ -3878,7 +3851,6 @@ function syncAvatarsInTopbar() {
       topBtn.textContent = (state.names[0] || 'U')[0].toUpperCase();
     }
   }
-  // Atualizar emojis do badge animado
   const be1 = document.getElementById('badge-emoji1');
   const be2 = document.getElementById('badge-emoji2');
   if (be1) be1.textContent = state.emojis[0] || '😊';
@@ -5034,23 +5006,19 @@ const Auth = (() => {
     document.getElementById('auth-root').classList.remove('visible');
     document.getElementById('um-name').textContent  = user.name  || user.email;
     document.getElementById('um-email').textContent = user.email || '';
-
-    // Verificar se precisa de onboarding
     const needsOnboarding = await checkOnboarding(user);
     if (needsOnboarding) {
       const ob = document.getElementById('onboarding-root');
       if (ob) ob.style.display = 'flex';
       initOnboarding();
-      // Pré-preencher nome do email se disponível
-      const nameFromEmail = user.email ? user.email.split('@')[0] : '';
+      const nameFromEmail = (user.email || '').split('@')[0];
       const obInput = document.getElementById('ob-name');
       if (obInput && nameFromEmail) {
         obInput.value = nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
         obValidate();
       }
-      return; // obConfirm vai chamar init() depois
+      return;
     }
-
     document.getElementById('app-root').style.display = 'block';
     document.getElementById('topbar-avatar-emoji').textContent = (user.name || 'U')[0].toUpperCase();
     init();
@@ -5136,28 +5104,25 @@ function setupRealtime() {
   if (!householdId) return;
   if (realtimeSub) { supa.removeChannel(realtimeSub); realtimeSub = null; }
   realtimeSub = supa.channel('hh-' + householdId)
-    .on('postgres_changes', {
-      event: '*', schema: 'public', table: 'household_data',
-      filter: 'household_id=eq.' + householdId
-    }, payload => {
-      const remote = payload.new?.data;
-      if (!remote) return;
-      const SHARED = ['transactions','metas','budgets','cats','challenge','lastReportMonth'];
-      let changed = false;
-      SHARED.forEach(k => {
-        if (remote[k] !== undefined && JSON.stringify(remote[k]) !== JSON.stringify(state[k])) {
-          state[k] = remote[k]; changed = true;
+    .on('postgres_changes', { event:'*', schema:'public', table:'household_data',
+      filter:'household_id=eq.' + householdId },
+      function(payload) {
+        const remote = payload.new && payload.new.data;
+        if (!remote) return;
+        const SHARED = ['transactions','metas','budgets','cats','challenge','lastReportMonth'];
+        let changed = false;
+        SHARED.forEach(function(k) {
+          if (remote[k] !== undefined && JSON.stringify(remote[k]) !== JSON.stringify(state[k])) {
+            state[k] = remote[k]; changed = true;
+          }
+        });
+        if (changed) {
+          renderAll();
+          showToast('🔄 ' + (state.names[1] || 'Parceiro') + ' atualizou', 'success', 2500);
         }
-      });
-      if (changed) {
-        renderAll();
-        const partner = state.names[1] || 'Parceiro';
-        showToast('🔄 ' + partner + ' atualizou os dados', 'success', 2500);
-      }
-    })
-    .subscribe(status => {
+      })
+    .subscribe(function(status) {
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        console.warn('Realtime caiu, reconectando em 3s...', status);
         setTimeout(setupRealtime, 3000);
       }
     });
@@ -6799,46 +6764,6 @@ async function showInviteCode() {
   showInviteModal(code);
 }
 
-function showInviteModal(code) {
-  const old = document.getElementById('modal-invite-code');
-  if (old) old.remove();
-  const modal = document.createElement('div');
-  modal.id = 'modal-invite-code';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
-  modal.innerHTML = `
-    <div style="background:var(--bg2,#1a1a20);border:1px solid var(--border);border-radius:20px;padding:28px 24px;max-width:340px;width:100%;text-align:center;animation:jellyIn .4s var(--spring-soft) both">
-      <div style="font-size:36px;margin-bottom:10px">💞</div>
-      <div style="font-size:17px;font-weight:700;margin-bottom:4px">Código de convite</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:20px">Compartilhe com seu parceiro para se vincular</div>
-      <div style="background:var(--surface2);border:2px dashed rgba(179,64,240,.5);border-radius:14px;padding:18px;margin-bottom:16px">
-        <div style="font-size:28px;font-weight:800;letter-spacing:8px;font-family:monospace;color:var(--accent,#b340f0)">${code}</div>
-      </div>
-      <button id="btn-copy-invite" onclick="copyInviteCode('${code}')"
-        style="width:100%;padding:13px;background:var(--accent,#b340f0);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;transition:opacity .2s">
-        📋 Copiar código
-      </button>
-      <button onclick="document.getElementById('modal-invite-code').remove()"
-        style="width:100%;padding:10px;background:transparent;border:1px solid var(--border2);border-radius:12px;color:var(--text2);font-size:13px;cursor:pointer">
-        Fechar
-      </button>
-    </div>`;
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-  document.body.appendChild(modal);
-}
-
-function copyInviteCode(code) {
-  navigator.clipboard.writeText(code).then(() => {
-    const btn = document.getElementById('btn-copy-invite');
-    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(() => { btn.innerHTML = '📋 Copiar código'; }, 2000); }
-    showToast('✅ Código copiado!', 'success');
-  }).catch(() => {
-    const el = document.createElement('textarea');
-    el.value = code; document.body.appendChild(el); el.select();
-    document.execCommand('copy'); el.remove();
-    showToast('✅ Código copiado!', 'success');
-  });
-}
-
 async function doJoinHousehold() {
   const code = document.getElementById('invite-input')?.value.trim();
   if (!code) { showToast('Digite o código do parceiro', 'error'); return; }
@@ -6905,6 +6830,72 @@ async function unlinkHousehold() {
 
 
 
+// ════════════════════════════════════════
+// NOVAS FUNCIONALIDADES v29
+// ════════════════════════════════════════
+
+// ── Skeleton Loading ──
+function showSkeletons() {
+  const cards = document.getElementById('dash-cards');
+  if (cards) cards.innerHTML = [1,2,3,4].map(() =>
+    '<div class="card skeleton skeleton-card"></div>').join('');
+  const banner = document.getElementById('motivational-banner');
+  if (banner) banner.innerHTML = '<div class="skeleton skeleton-line" style="width:220px;height:16px"></div>';
+  const recent = document.getElementById('dash-recent-body');
+  if (recent) recent.innerHTML = [1,2,3].map(() =>
+    '<tr><td colspan="5"><div class="skeleton skeleton-line" style="width:100%;height:16px;margin:6px 0"></div></td></tr>').join('');
+}
+
+// ── Modo Solo vs Casal ──
+function isSolo() { return !householdId; }
+
+function applySoloMode() {
+  const solo = isSolo();
+  const tbP2 = document.getElementById('tb-p2');
+  const tbP1 = document.getElementById('tb-p1');
+  if (tbP2) tbP2.style.display = solo ? 'none' : '';
+  if (solo && tbP1) tbP1.click();
+  const fp1 = document.getElementById('filter-p1-btn');
+  const fp2 = document.getElementById('filter-p2-btn');
+  if (fp1) fp1.style.display = solo ? 'none' : '';
+  if (fp2) fp2.style.display = solo ? 'none' : '';
+}
+
+// ── Modal de código de convite ──
+function showInviteModal(code) {
+  const old = document.getElementById('modal-invite-code');
+  if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'modal-invite-code';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
+  modal.innerHTML =
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 24px;max-width:340px;width:100%;text-align:center;animation:jellyIn .4s var(--spring-soft) both">' +
+      '<div style="font-size:36px;margin-bottom:10px">💞</div>' +
+      '<div style="font-size:17px;font-weight:700;margin-bottom:4px">Código de convite</div>' +
+      '<div style="font-size:12px;color:var(--text3);margin-bottom:20px">Compartilhe com seu parceiro para se vincular</div>' +
+      '<div style="background:var(--surface2);border:2px dashed rgba(179,64,240,.5);border-radius:14px;padding:18px;margin-bottom:16px">' +
+        '<div style="font-size:28px;font-weight:800;letter-spacing:8px;font-family:monospace;color:var(--accent,#b340f0)">' + code + '</div>' +
+      '</div>' +
+      '<button id="btn-copy-invite" onclick="copyInviteCode('' + code + '')" style="width:100%;padding:13px;background:var(--accent,#b340f0);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">📋 Copiar código</button>' +
+      '<button onclick="document.getElementById('modal-invite-code').remove()" style="width:100%;padding:10px;background:transparent;border:1px solid var(--border2);border-radius:12px;color:var(--text2);font-size:13px;cursor:pointer">Fechar</button>' +
+    '</div>';
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+function copyInviteCode(code) {
+  navigator.clipboard.writeText(code).then(function() {
+    const btn = document.getElementById('btn-copy-invite');
+    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(function(){ btn.textContent = '📋 Copiar código'; }, 2000); }
+    showToast('✅ Código copiado!', 'success');
+  }).catch(function() {
+    const el = document.createElement('textarea');
+    el.value = code; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); el.remove();
+    showToast('✅ Código copiado!', 'success');
+  });
+}
+
 // ── Onboarding ──
 const OB_EMOJIS = ['😊','😎','🥰','🤩','😄','🦊','🐱','🐶','🦁','🐼','🌟','⚡','🔥','💎','🎯','🏆','🌙','🌈','🎮','🎵'];
 let obSelectedEmoji = '😊';
@@ -6912,20 +6903,20 @@ let obSelectedEmoji = '😊';
 function initOnboarding() {
   const grid = document.getElementById('ob-emoji-grid');
   if (!grid) return;
-  grid.innerHTML = OB_EMOJIS.map(e =>
-    `<div class="onboarding-emoji-opt${e === obSelectedEmoji ? ' selected' : ''}" onclick="obSelectEmoji('${e}')">${e}</div>`
-  ).join('');
+  grid.innerHTML = OB_EMOJIS.map(function(e) {
+    return '<div class="onboarding-emoji-opt' + (e === obSelectedEmoji ? ' selected' : '') + '" onclick="obSelectEmoji('' + e + '')">' + e + '</div>';
+  }).join('');
 }
 
 function obSelectEmoji(e) {
   obSelectedEmoji = e;
-  document.querySelectorAll('.onboarding-emoji-opt').forEach(el => {
+  document.querySelectorAll('.onboarding-emoji-opt').forEach(function(el) {
     el.classList.toggle('selected', el.textContent === e);
   });
 }
 
 function obValidate() {
-  const name = document.getElementById('ob-name')?.value.trim();
+  const name = document.getElementById('ob-name') ? document.getElementById('ob-name').value.trim() : '';
   const btn = document.getElementById('ob-btn');
   if (!btn) return;
   const valid = name && name.length >= 2;
@@ -6934,11 +6925,12 @@ function obValidate() {
 }
 
 async function obConfirm() {
-  const name = document.getElementById('ob-name')?.value.trim();
+  const name = document.getElementById('ob-name') ? document.getElementById('ob-name').value.trim() : '';
   if (!name || name.length < 2) return;
   state.names[0] = name;
   state.emojis[0] = obSelectedEmoji;
-  const { data: { user } } = await supa.auth.getUser();
+  const resp = await supa.auth.getUser();
+  const user = resp.data.user;
   if (user) localStorage.setItem('syna_onboarded_' + user.id, '1');
   document.getElementById('onboarding-root').style.display = 'none';
   document.getElementById('app-root').style.display = 'block';
@@ -6959,67 +6951,28 @@ async function checkOnboarding(user) {
         return false;
       }
     }
-  } catch {}
+  } catch(e) {}
   return true;
 }
 
 </script>
-
-function showSkeletons() {
-  const cards = document.getElementById('dash-cards');
-  if (cards) cards.innerHTML = [1,2,3,4].map(() =>
-    `<div class="card skeleton skeleton-card"></div>`).join('');
-  const banner = document.getElementById('motivational-banner');
-  if (banner) banner.innerHTML = `<div class="skeleton skeleton-line" style="width:220px;height:16px"></div>`;
-  const recent = document.getElementById('dash-recent-body');
-  if (recent) recent.innerHTML = [1,2,3].map(() =>
-    `<tr><td colspan="5"><div class="skeleton skeleton-line" style="width:100%;height:16px;margin:6px 0"></div></td></tr>`).join('');
-}
-
-// ── Modo Solo vs Casal ──
-function isSolo() { return !householdId; }
-
-function applySoloMode() {
-  const solo = isSolo();
-  // Seletor de pessoa no formulário de lançamento
-  const tbP2 = document.getElementById('tb-p2');
-  const tbP1 = document.getElementById('tb-p1');
-  if (tbP2) tbP2.style.display = solo ? 'none' : '';
-  if (tbP1 && solo) { tbP1.click(); } // forçar pessoa 1 no modo solo
-
-  // Filtros de pessoa na lista de transações
-  const fp1 = document.getElementById('filter-p1-btn');
-  const fp2 = document.getElementById('filter-p2-btn');
-  if (fp1) fp1.style.display = solo ? 'none' : '';
-  if (fp2) fp2.style.display = solo ? 'none' : '';
-
-  // Card de Pessoa 2 no dashboard (esconder)
-  // Feito no renderDashCards via isSolo()
-}
 
 <!-- ONBOARDING -->
 <div id="onboarding-root" style="display:none">
   <div class="onboarding-card">
     <div style="font-size:40px;margin-bottom:12px">👋</div>
     <div style="font-size:20px;font-weight:700;margin-bottom:6px">Bem-vindo ao Syna!</div>
-    <div style="font-size:13px;color:var(--text3);margin-bottom:28px;line-height:1.6">Antes de começar, como você quer ser chamado?</div>
-
-    <!-- Emoji picker -->
+    <div style="font-size:13px;color:var(--text3);margin-bottom:24px;line-height:1.6">Antes de começar, como você quer ser chamado?</div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px">Escolha seu emoji</div>
     <div class="onboarding-emoji-grid" id="ob-emoji-grid"></div>
-
-    <!-- Nome -->
-    <div style="margin-top:20px;margin-bottom:20px">
+    <div style="margin-top:18px;margin-bottom:18px">
       <input id="ob-name" type="text" maxlength="20" placeholder="Seu nome ou apelido"
         style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:15px;text-align:center;outline:none;box-sizing:border-box"
         oninput="obValidate()">
     </div>
-
     <button id="ob-btn" onclick="obConfirm()"
       style="width:100%;padding:14px;background:var(--accent,#b340f0);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;opacity:.4;transition:opacity .2s"
-      disabled>
-      Vamos lá! 🚀
-    </button>
+      disabled>Vamos lá! 🚀</button>
   </div>
 </div>
 </body>
