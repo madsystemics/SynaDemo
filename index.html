@@ -4115,10 +4115,9 @@ function syncNames() {
 
   syncAvatarsInTopbar();
 
-  // Badge de vínculo
+  // Badge de vínculo — controlado por applyPartnerVisibility, não aqui
   const coupleBadge = document.getElementById('couple-badge');
-  if (coupleBadge) coupleBadge.style.display = householdId ? 'flex' : 'none';
-  updateCoupleStatus();
+  if (coupleBadge) coupleBadge.style.display = (householdId && hasPartner) ? 'flex' : 'none';
 }
 
 function updateConfig() {
@@ -7045,7 +7044,7 @@ async function showInviteCode() {
   showInviteModal(code);
 }
 
-async async function doJoinHousehold() {
+async function doJoinHousehold() {
   const code = document.getElementById('invite-input')?.value.trim();
   if (!code) { showToast('Digite o código do parceiro', 'error'); return; }
   showToast('⏳ Conectando...', 'success', 1500);
