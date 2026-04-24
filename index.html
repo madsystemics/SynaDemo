@@ -3618,10 +3618,12 @@ async function loadState() {
           state.names[0]  = partnerEntry[1].name  || state.names[0];
           state.emojis[0] = partnerEntry[1].emoji || state.emojis[0];
         }
-        if (myEntry) {
-          state.names[1]  = myEntry.name  || state.names[1];
+        if (myEntry && myEntry.name) {
+          // Só sobrescrever meu nome se já tiver algo salvo no household
+          state.names[1]  = myEntry.name;
           state.emojis[1] = myEntry.emoji || state.emojis[1];
         }
+        // Se myEntry não existe ainda, manter o nome local (não sobrescrever)
       } else {
         // Eu sou p1 — parceiro é p2
         if (partnerEntry) {
@@ -3649,10 +3651,11 @@ function saveState() {
     SHARED_KEYS.forEach(k => { sharedData[k] = state[k]; });
     // Salvar nome e emoji do usuário atual para o parceiro ler
     if (!sharedData._members) sharedData._members = {};
-    sharedData._members[user.id] = { name: state.names[0], emoji: state.emojis[0] };
+    // Gravar o nome correto: se sou p1 uso names[0], se sou p2 uso names[1]
+    const amIP1 = !sharedData._p1uid || sharedData._p1uid === user.id;
+    const myIdx = amIP1 ? 0 : 1;
+    sharedData._members[user.id] = { name: state.names[myIdx], emoji: state.emojis[myIdx] };
     // _p1uid define quem é Pessoa 1 permanentemente (primeiro a salvar)
-    if (!sharedData._p1uid) sharedData._p1uid = user.id;
-    // Registrar quem é p1 (primeiro a salvar) — define a ordem permanente
     if (!sharedData._p1uid) sharedData._p1uid = user.id;
     supa.from('household_data').upsert(
       { household_id: householdId, data: sharedData, updated_at: new Date().toISOString() },
@@ -5200,12 +5203,22 @@ async function joinHousehold(code) {
     .upsert({ household_id: hh.id, user_id: uid }, { onConflict: 'household_id,user_id', ignoreDuplicates: true });
   householdId = hh.id;
   hasPartner = true;
+  // Salvar nome/emoji próprios ANTES do loadState (para não serem sobrescritos)
+  const myNameBefore  = state.names[0];
+  const myEmojiBefore = state.emojis[0];
   // Limpar flag de desvinculado — usuário entrou em novo casal
   localStorage.removeItem('syna_unlinked_' + uid);
   localStorage.removeItem('syna_unlinked_hh_' + uid);
   await loadState();
+  // Após loadState, verificar se meu nome foi sobrescrito e restaurar
+  // Se eu sou p2 (names[1] ficou vazio ou igual ao da parceira), corrigir
+  if (!state.names[1] || state.names[1] === state.names[0]) {
+    state.names[1]  = myNameBefore;
+    state.emojis[1] = myEmojiBefore;
+  }
   renderAll();
   updateCoupleStatus();
+  applyPartnerVisibility();
   showToast('✅ Você entrou no casal!', 'success');
   return { ok:true };
 }
