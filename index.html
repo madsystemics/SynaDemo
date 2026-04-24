@@ -4552,5 +4552,84 @@ window.addEventListener('DOMContentLoaded', () => {
   init().catch(console.error);
 });
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const bind = (sel, fn) => document.querySelectorAll(sel).forEach(el => {
+    el.style.pointerEvents = 'auto';
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); fn(el); });
+  });
+  bind('[onclick*="authShowMode(\'signup\')"], #go-signup', () => authShowMode('signup'));
+  bind('[onclick*="authShowMode(\'login\')"], #go-login', () => authShowMode('login'));
+  bind('[onclick*="authDemo()"], #btn-demo', () => authDemo());
+  bind('#btn-login', () => authLogin());
+  bind('#btn-signup', () => authSignup());
+  bind('#btn-reset', () => authReset?.());
+  bind('#tab-login', () => authShowMode('login'));
+  bind('#tab-signup', () => authShowMode('signup'));
+  bind('#auth-root input', (el) => { el.style.pointerEvents='auto'; el.style.cursor='text'; });
+  const authRoot = document.getElementById('auth-root');
+  if (authRoot) authRoot.classList.add('visible');
+  authShowMode('login');
+  const visibleFix = document.createElement('style');
+  visibleFix.textContent = `
+    #auth-root, #auth-root * { pointer-events: auto !important; }
+    #auth-root { z-index: 999999 !important; position: fixed !important; inset: 0 !important; }
+    #app-root { display: none !important; }
+  `;
+  document.head.appendChild(visibleFix);
+});
+</script>
+
+
+<script>
+window.authShowMode = function(mode) {
+  const login = document.getElementById('form-login');
+  const signup = document.getElementById('form-signup');
+  const reset = document.getElementById('form-reset');
+  if (login) login.style.display = mode === 'login' ? 'block' : 'none';
+  if (signup) signup.style.display = mode === 'signup' ? 'block' : 'none';
+  if (reset) reset.style.display = mode === 'reset' ? 'block' : 'none';
+  const tl = document.getElementById('tab-login');
+  const ts = document.getElementById('tab-signup');
+  if (tl) tl.classList.toggle('active', mode === 'login');
+  if (ts) ts.classList.toggle('active', mode === 'signup');
+}
+window.authLogin = window.authLogin || (async function() {
+  const email = document.getElementById('login-email')?.value?.trim();
+  const pw = document.getElementById('login-pw')?.value;
+  const { data, error } = await supa.auth.signInWithPassword({ email: email?.toLowerCase(), password: pw });
+  if (error) return showToast('E-mail ou senha inválidos', 'error');
+  const user = data.user;
+  await init();
+  document.getElementById('auth-root')?.classList.remove('visible');
+  document.getElementById('app-root') && (document.getElementById('app-root').style.display = 'block');
+  await loadState();
+  showToast('Bem-vindo!', 'success');
+});
+window.authSignup = window.authSignup || (async function() {
+  const name = document.getElementById('signup-name')?.value?.trim();
+  const email = document.getElementById('signup-email')?.value?.trim();
+  const pw = document.getElementById('signup-pw')?.value;
+  const pw2 = document.getElementById('signup-pw2')?.value;
+  if (!name || !email || !pw) return showToast('Preencha todos os campos', 'error');
+  if (pw !== pw2) return showToast('As senhas não coincidem', 'error');
+  const { error } = await supa.auth.signUp({ email: email.toLowerCase(), password: pw, options: { data: { name } } });
+  if (error) return showToast(error.message || 'Erro ao criar conta', 'error');
+  showToast('Conta criada! Verifique seu e-mail', 'success');
+  authShowMode('login');
+});
+window.authDemo = window.authDemo || (async function() {
+  const { data, error } = await supa.auth.signInAnonymously();
+  if (error) return showToast('Demo indisponível', 'error');
+  await init();
+  document.getElementById('auth-root')?.classList.remove('visible');
+  document.getElementById('app-root') && (document.getElementById('app-root').style.display = 'block');
+  showToast('Entrou como demo', 'success');
+});
+</script>
+
 </body>
 </html>
+<!-- SYNA_V2_UPDATED -->
