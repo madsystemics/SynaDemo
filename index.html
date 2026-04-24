@@ -5258,12 +5258,10 @@ async function joinHousehold(code) {
   const hh = { id: hhId };
   const { data: members } = await supa.from('household_members').select('id').eq('household_id', hh.id);
   if (members && members.length >= 2) return { ok:false, err:'Este casal já está completo.' };
-  if (householdId) await supa.from('household_members').delete().eq('household_id', householdId).eq('user_id', uid);
-  // Primeiro deletar qualquer entrada existente, depois inserir limpo
-  await supa.from('household_members').delete().eq('user_id', uid);
-  const { error: insertErr } = await supa.from('household_members')
-    .insert({ household_id: hh.id, user_id: uid });
-  if (insertErr) { console.error('joinHousehold insert error:', insertErr); return { ok:false, err:'Erro ao entrar no casal.' }; }
+  // Upsert: atualiza o household_id se já existir, insere se não existir
+  const { error: upsertErr } = await supa.from('household_members')
+    .upsert({ household_id: hh.id, user_id: uid }, { onConflict: 'user_id' });
+  if (upsertErr) { console.error('joinHousehold upsert error:', upsertErr); return { ok:false, err:'Erro ao entrar no casal.' }; }
   householdId = hh.id;
   hasPartner = true;
   // Limpar flag de desvinculado — usuário entrou em novo casal
