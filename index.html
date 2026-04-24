@@ -3565,7 +3565,21 @@ async function init() {
   renderAll(); // render rápido com cache local
   if (currentPage === 'dashboard') showSkeletons();
 
-  // 3. Aguardar dados compartilhados do Supabase
+  // 3. Restaurar vínculo do localStorage como fallback (evita piscar sem parceiro no F5)
+  try {
+    const { data: { user: u2 } } = await supa.auth.getUser();
+    if (u2) {
+      const savedHh = localStorage.getItem('syna_hh_' + u2.id);
+      const savedPartner = localStorage.getItem('syna_hh_partner_' + u2.id);
+      const wasUnlinked = localStorage.getItem('syna_unlinked_' + u2.id) === '1';
+      if (savedHh && savedPartner === '1' && !wasUnlinked) {
+        householdId = savedHh;
+        hasPartner  = true;
+      }
+    }
+  } catch {}
+  applyPartnerVisibility();
+  // 4. Aguardar dados compartilhados do Supabase
   await loadState();
   applyPartnerVisibility();
   applyPartnerVisibility();
@@ -3639,6 +3653,16 @@ async function loadState() {
         }
       }
     }
+    // Restaurar nome pessoal do usuário — nunca deixar o casal sobrescrever
+    try {
+      const personal = localStorage.getItem('syna_personal_' + user.id);
+      if (personal) {
+        const p = JSON.parse(personal);
+        const myIdx2 = (amIP1 === false) ? 1 : 0;
+        if (p.name)  state.names[myIdx2]  = p.name;
+        if (p.emoji) state.emojis[myIdx2] = p.emoji;
+      }
+    } catch {}
     try { localStorage.setItem('syna_' + user.id, JSON.stringify(state)); } catch {}
   }
   setupRealtime();
@@ -3652,6 +3676,12 @@ function saveState() {
     try { localStorage.setItem('syna_' + user.id, JSON.stringify(state)); } catch(e) {
       if (e.name === 'QuotaExceededError') showToast('⚠️ Armazenamento cheio!', 'error', 4000);
     }
+    // Salvar nome/emoji pessoal em chave separada para não ser sobrescrito pelo casal
+    const myPersonalIdx = (hasPartner && !amIP1) ? 1 : 0;
+    try { localStorage.setItem('syna_personal_' + user.id, JSON.stringify({
+      name:  state.names[myPersonalIdx],
+      emoji: state.emojis[myPersonalIdx],
+    })); } catch {}
     if (!householdId) return;
     // Salvar Supabase em background (não bloqueia UI)
     const SHARED_KEYS = ['transactions','metas','budgets','cats','challenge','lastReportMonth'];
@@ -5174,6 +5204,11 @@ async function getOrCreateHousehold() {
     const { data: allMembers } = await supa
       .from('household_members').select('user_id').eq('household_id', foundHhId);
     hasPartner = allMembers && allMembers.length >= 2;
+    // Persistir no localStorage para restaurar vínculo em caso de falha de rede
+    if (hasPartner) {
+      localStorage.setItem('syna_hh_' + uid, foundHhId);
+      localStorage.setItem('syna_hh_partner_' + uid, '1');
+    }
     return householdId;
   }
 
@@ -7056,8 +7091,9 @@ async function unlinkHousehold() {
   // Salvar flag E o householdId atual para ignorar no próximo reload
   const oldHhId = householdId;
   hasPartner = false;
-  hasPartner = false;
   localStorage.setItem('syna_unlinked_' + uid, '1');
+  localStorage.removeItem('syna_hh_' + uid);
+  localStorage.removeItem('syna_hh_partner_' + uid);
   if (oldHhId) localStorage.setItem('syna_unlinked_hh_' + uid, oldHhId);
 
   householdId = null;
