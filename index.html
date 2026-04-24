@@ -3674,6 +3674,7 @@ async function loadState() {
     try { localStorage.setItem('syna_' + user.id, JSON.stringify(state)); } catch {}
   }
   setupRealtime();
+  startPollingFallback();
   updateCoupleStatus();
   setupAvatarSectionForRole();
   loadStateCompleted = true;
@@ -4075,8 +4076,16 @@ function syncNames() {
   ['chip-name2','cfg-n2-label','cfg-color2-label'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=n2; });
   ['tb-p1','filter-p1-btn'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=`${e1} ${n1}`; });
   ['tb-p2','filter-p2-btn'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=`${e2} ${n2}`; });
-  const i1=document.getElementById('cfg-name1'); if(i1) i1.value=n1;
-  const i2=document.getElementById('cfg-name2'); if(i2) i2.value=n2;
+  // Se sou p2: input1 = meu nome (names[1]), input2 = parceiro (names[0])
+  const i1=document.getElementById('cfg-name1');
+  const i2=document.getElementById('cfg-name2');
+  if (hasPartner && !amIP1) {
+    if (i1) i1.value = n2; // meu nome = names[1]
+    if (i2) i2.value = n1; // parceiro = names[0]
+  } else {
+    if (i1) i1.value = n1;
+    if (i2) i2.value = n2;
+  }
   const eb1=document.getElementById('emoji1-btn'); if(eb1) eb1.textContent=e1;
   const eb2=document.getElementById('emoji2-btn'); if(eb2) eb2.textContent=e2;
   const tf1=document.getElementById('tf-p1'); if(tf1) tf1.textContent=`${e1} ${n1}`;
@@ -4101,11 +4110,16 @@ function syncNames() {
 }
 
 function updateConfig() {
-
   const raw1 = document.getElementById('cfg-name1').value;
   const raw2 = document.getElementById('cfg-name2').value;
-  state.names[0] = raw1 || 'Pessoa 1';
-  state.names[1] = raw2 || 'Pessoa 2';
+  // Se sou p2: cfg-name1 = meu nome (names[1]), cfg-name2 = parceiro (names[0])
+  if (hasPartner && !amIP1) {
+    state.names[1] = raw1 || 'Pessoa 2';
+    state.names[0] = raw2 || 'Pessoa 1';
+  } else {
+    state.names[0] = raw1 || 'Pessoa 1';
+    state.names[1] = raw2 || 'Pessoa 2';
+  }
   saveState();
 
   const n1 = state.names[0], n2 = state.names[1];
@@ -5279,6 +5293,15 @@ async function joinHousehold(code) {
   return { ok:true };
 }
 
+function startPollingFallback() {
+  if (!hasPartner || !householdId) return;
+  // Polling a cada 30s como fallback caso realtime não funcione
+  if (window._pollingInterval) clearInterval(window._pollingInterval);
+  window._pollingInterval = setInterval(function() {
+    if (householdId && hasPartner) _reloadSharedData();
+  }, 30000);
+}
+
 function setupRealtime() {
   if (!householdId) return;
   if (realtimeSub) { supa.removeChannel(realtimeSub); realtimeSub = null; }
@@ -5307,7 +5330,7 @@ function setupRealtime() {
   });
 }
 
-function _applySharedData(remote) {
+async function _applySharedData(remote) {
   if (!remote) return;
   const SHARED = ['transactions','metas','budgets','cats','challenge','lastReportMonth'];
   let changed = false;
@@ -5317,28 +5340,32 @@ function _applySharedData(remote) {
     }
   });
   if (remote._members) {
-    supa.auth.getUser().then(function(r) {
-      const me = r.data && r.data.user;
-      if (!me) return;
+    const r = await supa.auth.getUser();
+    const me = r.data && r.data.user;
+    if (me) {
       const p1uid = remote._p1uid;
-      const myEntry = remote._members[me.id];
-      const entries = Object.entries(remote._members);
-      const partnerEntry = entries.find(function(e) { return e[0] !== me.id; });
+      const partnerEntry = Object.entries(remote._members).find(function(e) { return e[0] !== me.id; });
+      const partnerName = partnerEntry ? partnerEntry[1].name : null;
       if (p1uid && p1uid !== me.id) {
-        // Eu sou p2
-        if (partnerEntry) { state.names[0] = partnerEntry[1].name || state.names[0]; state.emojis[0] = partnerEntry[1].emoji || state.emojis[0]; }
-        if (myEntry)       { state.names[1] = myEntry.name || state.names[1]; state.emojis[1] = myEntry.emoji || state.emojis[1]; }
+        // Eu sou p2 — só atualizar nome do parceiro (names[0]), nunca o meu
+        if (partnerEntry && partnerEntry[1].name) {
+          state.names[0]  = partnerEntry[1].name;
+          state.emojis[0] = partnerEntry[1].emoji || state.emojis[0];
+        }
+        if (partnerEntry && partnerEntry[1].avatar !== undefined) state.avatar1 = partnerEntry[1].avatar;
       } else {
-        // Eu sou p1
-        if (partnerEntry) { state.names[1] = partnerEntry[1].name || state.names[1]; state.emojis[1] = partnerEntry[1].emoji || state.emojis[1]; }
+        // Eu sou p1 — só atualizar nome do parceiro (names[1]), nunca o meu
+        if (partnerEntry && partnerEntry[1].name) {
+          state.names[1]  = partnerEntry[1].name;
+          state.emojis[1] = partnerEntry[1].emoji || state.emojis[1];
+        }
+        if (partnerEntry && partnerEntry[1].avatar !== undefined) state.avatar2 = partnerEntry[1].avatar;
       }
+      if (partnerName) showToast('🔄 ' + partnerName + ' atualizou', 'success', 2500);
       changed = true;
-    });
+    }
   }
-  if (changed) {
-    renderAll();
-    showToast('🔄 ' + (state.names[1] || 'Parceiro') + ' atualizou', 'success', 2500);
-  }
+  if (changed) { renderAll(); syncNames(); syncAvatarsInTopbar(); }
 }
 
 async function _reloadSharedData() {
