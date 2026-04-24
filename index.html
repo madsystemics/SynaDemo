@@ -3569,6 +3569,7 @@ async function init() {
   await loadState();
   applyPartnerVisibility();
   applyPartnerVisibility();
+  setupAvatarSectionForRole();
 
   // 4. Re-renderizar com dados remotos completos (tema já correto do localStorage)
   applyTheme(state.theme);
@@ -3612,6 +3613,7 @@ async function loadState() {
     if (members) {
       const myEntry      = members[user.id];
       const partnerEntry = Object.entries(members).find(function(e) { return e[0] !== user.id; });
+      amIP1 = !(p1uid && p1uid !== user.id);
       if (p1uid && p1uid !== user.id) {
         // Eu sou p2 — parceiro é p1
         if (partnerEntry) {
@@ -3624,11 +3626,16 @@ async function loadState() {
           state.emojis[1] = myEntry.emoji || state.emojis[1];
         }
         // Se myEntry não existe ainda, manter o nome local (não sobrescrever)
+        // Avatar do parceiro (p1) → state.avatar1
+        if (partnerEntry && partnerEntry[1].avatar !== undefined) {
+          state.avatar1 = partnerEntry[1].avatar;
+        }
       } else {
         // Eu sou p1 — parceiro é p2
         if (partnerEntry) {
           state.names[1]  = partnerEntry[1].name  || state.names[1];
           state.emojis[1] = partnerEntry[1].emoji || state.emojis[1];
+          if (partnerEntry[1].avatar !== undefined) state.avatar2 = partnerEntry[1].avatar;
         }
       }
     }
@@ -3636,6 +3643,7 @@ async function loadState() {
   }
   setupRealtime();
   updateCoupleStatus();
+  setupAvatarSectionForRole();
 }
 function saveState() {
   // Salvar localStorage IMEDIATAMENTE (síncrono, sem await)
@@ -3654,7 +3662,7 @@ function saveState() {
     // Gravar o nome correto: se sou p1 uso names[0], se sou p2 uso names[1]
     const amIP1 = !sharedData._p1uid || sharedData._p1uid === user.id;
     const myIdx = amIP1 ? 0 : 1;
-    sharedData._members[user.id] = { name: state.names[myIdx], emoji: state.emojis[myIdx] };
+    sharedData._members[user.id] = { name: state.names[myIdx], emoji: state.emojis[myIdx], avatar: state.avatar1 || null };
     // _p1uid define quem é Pessoa 1 permanentemente (primeiro a salvar)
     if (!sharedData._p1uid) sharedData._p1uid = user.id;
     supa.from('household_data').upsert(
@@ -3832,7 +3840,9 @@ function uploadAvatar(input, person) {
   const reader = new FileReader();
   reader.onload = e => {
     const dataUrl = e.target.result;
-    if (person === 1) { state.avatar1 = dataUrl; } else { state.avatar2 = dataUrl; }
+    // Salvar na posição correta: se sou p1 → avatar1, se sou p2 → avatar2
+    const myAvatarKey = (hasPartner && !amIP1) ? 'avatar2' : 'avatar1';
+    state[myAvatarKey] = dataUrl;
     saveState();
     renderAvatarPreview(person, dataUrl);
     syncAvatarsInTopbar();
@@ -3842,7 +3852,9 @@ function uploadAvatar(input, person) {
 }
 
 function removeAvatar(person) {
-  if (person === 1) { state.avatar1 = null; } else { state.avatar2 = null; }
+  // Remover avatar do próprio usuário (p1→avatar1, p2→avatar2)
+  const rmKey = (hasPartner && !amIP1) ? 'avatar2' : 'avatar1';
+  state[rmKey] = null;
   saveState();
   renderAvatarPreview(person, null);
   syncAvatarsInTopbar();
@@ -4996,6 +5008,7 @@ function renderAll() {
 const supa = supabase.createClient('https://hjndfuscdpdulmdsalys.supabase.co', 'sb_publishable_N8kIlSdZecoFaU8-IpsgSw_n9aAEFec');
 let householdId  = null;
 let hasPartner   = false;
+let amIP1        = true;  // true se o usuário atual é Pessoa 1 do casal
 let realtimeSub  = null;
 
 // ── Onboarding ──
@@ -6985,6 +6998,38 @@ function applyPartnerVisibility() {
     const el = document.getElementById(id);
     if (el) el.style.display = show ? (id === 'chip-person2' ? 'flex' : id === 'tb-p2' ? 'inline-flex' : 'flex') : 'none';
   });
+}
+
+
+function setupAvatarSectionForRole() {
+  if (!hasPartner) return;
+  const row1 = document.getElementById('av1-name-lbl');
+  const row2 = document.getElementById('av2-name-lbl');
+  const btn1Label = document.querySelector('label[for] input[onchange*="uploadAvatar(this,1)"]');
+  const rm1 = document.getElementById('btn-rm-av1');
+  const rm2 = document.getElementById('btn-rm-av2');
+  // Encontrar os labels de upload pelo onchange
+  const uploadInputs = document.querySelectorAll('input[type=file][onchange]');
+  let uploadInput1 = null, uploadInput2 = null;
+  uploadInputs.forEach(inp => {
+    if (inp.getAttribute('onchange') && inp.getAttribute('onchange').includes(',1)')) uploadInput1 = inp;
+    if (inp.getAttribute('onchange') && inp.getAttribute('onchange').includes(',2)')) uploadInput2 = inp;
+  });
+  if (!amIP1) {
+    // Sou p2: row 1 = parceiro (read-only), row 2 = minha foto
+    if (row1) row1.textContent = state.names[0] + ' (parceiro)';
+    if (row2) row2.textContent = 'Minha foto';
+    // Desabilitar upload/remoção do avatar do parceiro (row 1)
+    if (uploadInput1) { uploadInput1.disabled = true; uploadInput1.parentElement.style.opacity = '0.4'; uploadInput1.parentElement.style.pointerEvents = 'none'; }
+    if (rm1) rm1.style.display = 'none';
+  } else {
+    // Sou p1: row 1 = minha foto, row 2 = parceiro (read-only)
+    if (row1) row1.textContent = 'Minha foto';
+    if (row2) row2.textContent = state.names[1] + ' (parceiro)';
+    // Desabilitar upload/remoção do avatar do parceiro (row 2)
+    if (uploadInput2) { uploadInput2.disabled = true; uploadInput2.parentElement.style.opacity = '0.4'; uploadInput2.parentElement.style.pointerEvents = 'none'; }
+    if (rm2) rm2.style.display = 'none';
+  }
 }
 
 function confirmUnlink() {
