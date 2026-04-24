@@ -3565,7 +3565,7 @@ async function init() {
   renderAll(); // render rápido com cache local
   if (currentPage === 'dashboard') showSkeletons();
 
-  // 3. Restaurar vínculo do localStorage como fallback (evita piscar sem parceiro no F5)
+  // 3. Restaurar vínculo e identidade do localStorage como fallback
   try {
     const { data: { user: u2 } } = await supa.auth.getUser();
     if (u2) {
@@ -3575,6 +3575,16 @@ async function init() {
       if (savedHh && savedPartner === '1' && !wasUnlinked) {
         householdId = savedHh;
         hasPartner  = true;
+      }
+      // Restaurar amIP1 e nome próprio antes do loadState
+      const personal = localStorage.getItem('syna_personal_' + u2.id);
+      if (personal) {
+        const p = JSON.parse(personal);
+        if (typeof p.amIP1 === 'boolean') amIP1 = p.amIP1;
+        // Garantir que meu nome está no slot correto
+        const myIdx = amIP1 ? 0 : 1;
+        if (p.name)  state.names[myIdx]  = p.name;
+        if (p.emoji) state.emojis[myIdx] = p.emoji;
       }
     }
   } catch {}
@@ -3690,8 +3700,10 @@ function saveState() {
     if (loadStateCompleted) {
       const myPersonalIdx = (hasPartner && !amIP1) ? 1 : 0;
       try { localStorage.setItem('syna_personal_' + user.id, JSON.stringify({
-        name:  state.names[myPersonalIdx],
-        emoji: state.emojis[myPersonalIdx],
+        name:   state.names[myPersonalIdx],
+        emoji:  state.emojis[myPersonalIdx],
+        amIP1:  amIP1,
+        hhId:   householdId,
       })); } catch {}
     }
     if (!householdId) return;
@@ -7033,11 +7045,18 @@ async function showInviteCode() {
   showInviteModal(code);
 }
 
-async function doJoinHousehold() {
+async async function doJoinHousehold() {
   const code = document.getElementById('invite-input')?.value.trim();
   if (!code) { showToast('Digite o código do parceiro', 'error'); return; }
+  showToast('⏳ Conectando...', 'success', 1500);
   const res = await joinHousehold(code);
   if (!res.ok) showToast('❌ ' + res.err, 'error');
+  else {
+    updateCoupleStatus();
+    applyPartnerVisibility();
+    syncNames();
+    renderAll();
+  }
 }
 // ── Status de vínculo nas configurações ──
 function updateCoupleStatus() {
